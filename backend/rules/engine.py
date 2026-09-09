@@ -5,9 +5,10 @@ from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.commodity_name import validate_commodity_name
+from .validators.origin import validate_origin_declaration
 from .validators.party_declaration import validate_party_declaration
 
-Validator = Callable[[Any], RuleResult]
+Validator = Callable[..., RuleResult]
 
 _VALIDATORS: dict[str, Validator] = {
     "DECL_001": validate_party_declaration,
@@ -47,6 +48,8 @@ def _select_applicable_rules(
         when = applicability.get("when")
         if when == {"field": "chapter_ii_applicable", "equals": True}:
             selected.append(rule)
+        elif rule.rule_id == "DECL_002" and when == {"field": "is_imported", "equals": True}:
+            selected.append(rule)
 
     return selected
 
@@ -79,18 +82,24 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
 
     results: list[RuleResult] = []
     for rule in _select_applicable_rules(inspection, registry):
-        validator = _VALIDATORS.get(rule.rule_id)
-        if validator is None:
-            results.append(
-                _review_result(
-                    rule,
-                    "Rule is applicable, but its validator has not yet been implemented in the current MVP engine.",
-                )
+        if rule.rule_id == "DECL_002":
+            result = validate_origin_declaration(
+                inspection.declarations.get(rule.data.get("field")),
+                is_imported=inspection.context.is_imported,
             )
-            continue
+        else:
+            validator = _VALIDATORS.get(rule.rule_id)
+            if validator is None:
+                results.append(
+                    _review_result(
+                        rule,
+                        "Rule is applicable, but its validator has not yet been implemented in the current MVP engine.",
+                    )
+                )
+                continue
+            declaration = inspection.declarations.get(rule.data.get("field"))
+            result = validator(declaration)
 
-        declaration = inspection.declarations.get(rule.data.get("field"))
-        result = validator(declaration)
         result.legal_reference = _legal_reference(rule)
         results.append(result)
 
