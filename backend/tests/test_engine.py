@@ -47,15 +47,22 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
                     confidence=0.96,
                     source_regions=["R03"],
                 ),
+                "mrp": Declaration(
+                    value=120,
+                    confidence=0.96,
+                    source_regions=["R05"],
+                ),
             }
         )
     )
     decl_003 = next(item for item in result.results if item.rule_id == "DECL_003")
     qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
+    mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
     assert decl_003.status == ComplianceStatus.PASS
     assert qty_001.status == ComplianceStatus.PASS
+    assert mrp_001.status == ComplianceStatus.PASS
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
-    assert result.pass_count >= 2
+    assert result.pass_count >= 3
     assert result.review_count >= 1
 
 
