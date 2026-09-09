@@ -1,4 +1,4 @@
-from backend.rules.models import ComplianceStatus, MoneyDeclaration
+from backend.rules.models import ComplianceStatus, Declaration, MoneyDeclaration
 from backend.rules.validators.mrp_format import validate_mrp_format
 
 
@@ -31,7 +31,7 @@ def test_non_inr_currency_fails():
 
 
 def test_missing_currency_requires_review():
-    declaration = MoneyDeclaration(value=120, confidence=0.96, source_regions=["R05"])
+    declaration = Declaration(value=120, confidence=0.96, source_regions=["R05"])
     result = validate_mrp_format(declaration, text_blocks=tax_text())
     assert result.status == ComplianceStatus.REVIEW
 
