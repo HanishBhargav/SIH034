@@ -3,13 +3,15 @@ from backend.rules.models import ComplianceStatus, Declaration, M2Context, M2Inp
 
 
 def make_input(**kwargs):
-    context = M2Context(
-        package_type="retail",
-        commodity_category="snacks",
-        package_quantity=1,
-        package_quantity_unit="kg",
-        **kwargs.pop("context_overrides", {}),
-    )
+    context_values = {
+        "package_type": "retail",
+        "commodity_category": "snacks",
+        "package_quantity": 1,
+        "package_quantity_unit": "kg",
+    }
+    context_values.update(kwargs.pop("context_overrides", {}))
+    context = M2Context(**context_values)
+
     return M2Input(
         inspection_id="TEST-001",
         declarations=kwargs.pop("declarations", {}),
