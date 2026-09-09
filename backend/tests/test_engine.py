@@ -43,6 +43,16 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
                     confidence=0.96,
                     source_regions=["R01"],
                 ),
+                "consumer_care": Declaration(
+                    value={
+                        "name": "ABC Foods Consumer Care",
+                        "address": "Mumbai, Maharashtra",
+                        "telephone": "18001234567",
+                        "email": "care@abcfoods.example",
+                    },
+                    confidence=0.96,
+                    source_regions=["R04"],
+                ),
                 "net_quantity": Declaration(
                     value=1,
                     unit="kg",
@@ -65,19 +75,21 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
         )
     )
     decl_003 = next(item for item in result.results if item.rule_id == "DECL_003")
+    decl_004 = next(item for item in result.results if item.rule_id == "DECL_004")
     qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
     qty_002 = next(item for item in result.results if item.rule_id == "QTY_002")
     mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
     mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
     date_001 = next(item for item in result.results if item.rule_id == "DATE_001")
     assert decl_003.status == ComplianceStatus.PASS
+    assert decl_004.status == ComplianceStatus.PASS
     assert qty_001.status == ComplianceStatus.PASS
     assert qty_002.status == ComplianceStatus.PASS
     assert mrp_001.status == ComplianceStatus.PASS
     assert mrp_002.status == ComplianceStatus.PASS
     assert date_001.status == ComplianceStatus.PASS
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
-    assert result.pass_count >= 6
+    assert result.pass_count >= 7
     assert result.review_count >= 1
 
 
