@@ -24,9 +24,15 @@ _VALIDATORS: dict[str, Validator] = {
 def _legal_reference(rule: RuleDefinition) -> str:
     source = rule.source
     document = source.get("document", "Unknown legal source")
-    rule_number = source.get("rule", "?")
+    rule_number = str(source.get("rule", "?"))
     sub_rule = source.get("sub_rule")
-    return f"{document}, Rule {rule_number}{f'({sub_rule})' if sub_rule else ''}"
+
+    # Reconciled rule layers can contribute both a fully qualified rule string
+    # and the older sub_rule field. Avoid duplicating the sub-rule in output.
+    if sub_rule and not rule_number.endswith(f"({sub_rule})"):
+        rule_number = f"{rule_number}({sub_rule})"
+
+    return f"{document}, Rule {rule_number}"
 
 
 def _review_result(rule: RuleDefinition, reason: str) -> RuleResult:
