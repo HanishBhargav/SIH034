@@ -29,6 +29,11 @@ class Declaration(BaseModel):
     value: Any | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     source_regions: list[str] = Field(default_factory=list)
+    state: DeclarationState | None = None
+    # Kept optional on the wire model so M1's JSON survives parsing even when
+    # the declaration is stored under the generic declarations mapping.
+    # Specialized validators can still require it where appropriate.
+    unit: str | None = None
 
 
 class MoneyDeclaration(Declaration):
