@@ -11,7 +11,7 @@ def test_rule_registry_returns_rule_definition():
     rule = get_rule("DECL_003")
     assert rule.rule_id == "DECL_003"
     assert rule.data["field"] == "commodity_name"
-    assert rule.source["rule"] == "6"
+    assert rule.source["rule"] == "6(1)(b)"
 
 
 def test_unknown_rule_id_raises_key_error():
