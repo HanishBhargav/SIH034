@@ -30,10 +30,10 @@ class Declaration(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     source_regions: list[str] = Field(default_factory=list)
     state: DeclarationState | None = None
-    # Kept optional on the wire model so M1's JSON survives parsing even when
-    # the declaration is stored under the generic declarations mapping.
-    # Specialized validators can still require it where appropriate.
+    # Optional wire fields preserve M1 metadata when declarations arrive
+    # through the generic declarations mapping.
     unit: str | None = None
+    currency: str | None = None
 
 
 class MoneyDeclaration(Declaration):
@@ -79,6 +79,9 @@ class M2Input(BaseModel):
 
 class RuleResult(BaseModel):
     rule_id: str
+    # Kept optional during the validator migration so existing rule outputs
+    # remain wire-compatible while M3/M4 can consume the field when supplied.
+    field: str | None = None
     status: ComplianceStatus
     reason: str
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
