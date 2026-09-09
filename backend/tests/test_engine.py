@@ -59,6 +59,23 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
     assert result.review_count >= 1
 
 
+def test_engine_valid_mrp_presence_passes():
+    result = evaluate(
+        make_input(
+            declarations={
+                "mrp": Declaration(
+                    value=120,
+                    confidence=0.96,
+                    source_regions=["R05"],
+                )
+            }
+        )
+    )
+    mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
+    assert mrp_001.status == ComplianceStatus.PASS
+    assert mrp_001.legal_reference.endswith("Rule 6(1(e))")
+
+
 def test_engine_unknown_applicability_requires_review():
     result = evaluate(make_input(context_overrides={"package_type": None}))
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
