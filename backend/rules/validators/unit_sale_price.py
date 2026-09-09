@@ -21,30 +21,32 @@ def _normalise_unit(unit: str | None) -> str:
     return aliases.get(value, value)
 
 
+def _base_quantity(quantity: float, unit: str) -> float:
+    unit = unit.strip().lower()
+    if unit in {"kg", "l", "m"}:
+        return quantity * 1000
+    return quantity
+
+
 def _expected_unit(quantity: float, unit: str) -> str | None:
     unit = unit.strip().lower()
+    base = _base_quantity(quantity, unit)
     if unit in {"g", "kg"}:
-        return "g" if quantity < 1000 else "kg"
+        return "g" if base < 1000 else "kg"
     if unit in {"ml", "l"}:
-        return "ml" if quantity < 1000 else "l"
+        return "ml" if base < 1000 else "l"
     if unit in {"cm", "m"}:
-        return "cm" if quantity < 100 else "m"
+        return "cm" if base < 100 else "m"
     if unit in {"number", "unit", "no", "nos"}:
         return "number"
     return None
 
 
 def _quantity_in_expected_unit(quantity: float, unit: str, expected_unit: str) -> float:
-    source = unit.strip().lower()
-    if expected_unit in {"g", "ml", "cm"}:
-        if source in {"kg", "l", "m"}:
-            return quantity * 1000
-        return quantity
+    base = _base_quantity(quantity, unit)
     if expected_unit in {"kg", "l", "m"}:
-        if source in {"g", "ml", "cm"}:
-            return quantity / 1000
-        return quantity
-    return quantity
+        return base / 1000
+    return base
 
 
 def validate_unit_sale_price(
@@ -74,7 +76,8 @@ def validate_unit_sale_price(
     quantity_in_expected_unit = _quantity_in_expected_unit(quantity, net_quantity.unit, expected_unit)
     expected_value = mrp_value / quantity_in_expected_unit
 
-    exempt = net_quantity.unit.strip().lower() in {"g", "ml"} and quantity <= 10
+    base = _base_quantity(quantity, net_quantity.unit)
+    exempt = net_quantity.unit.strip().lower() in {"g", "ml"} and base <= 10
     if exempt and declaration is None:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.PASS, reason="Unit sale price declaration is not required for a package of 10 g/ml or less.", legal_reference=LEGAL_REFERENCE)
 
