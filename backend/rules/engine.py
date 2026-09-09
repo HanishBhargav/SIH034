@@ -27,9 +27,10 @@ def _legal_reference(rule: RuleDefinition) -> str:
     rule_number = str(source.get("rule", "?"))
     sub_rule = source.get("sub_rule")
 
-    # Reconciled rule layers can contribute both a fully qualified rule string
-    # and the older sub_rule field. Avoid duplicating the sub-rule in output.
-    if sub_rule and not rule_number.endswith(f"({sub_rule})"):
+    # Reconciled rule layers may contain a fully qualified rule field as well
+    # as the older sub_rule field. If the rule field already has parentheses,
+    # treat it as authoritative and do not append the sub-rule again.
+    if sub_rule and "(" not in rule_number:
         rule_number = f"{rule_number}({sub_rule})"
 
     return f"{document}, Rule {rule_number}"
