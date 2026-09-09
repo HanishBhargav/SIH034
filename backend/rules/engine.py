@@ -13,9 +13,10 @@ from .validators.origin import validate_origin_declaration
 from .validators.party_declaration import validate_party_declaration
 from .validators.quantity import validate_net_quantity
 from .validators.quantity_unit import validate_quantity_unit
+from .validators.sticker_declaration import validate_sticker_declaration
 from .validators.veg_nonveg_dot import validate_veg_nonveg_dot
 Validator = Callable[..., RuleResult]
-_VALIDATORS: dict[str, Validator] = {"DECL_001": validate_party_declaration, "DECL_003": validate_commodity_name, "DECL_004": validate_consumer_care, "DECL_007": validate_gm_food_declaration, "DECL_008": validate_veg_nonveg_dot, "MRP_001": validate_mrp_presence, "QTY_001": validate_net_quantity, "QTY_002": validate_quantity_unit}
+_VALIDATORS: dict[str, Validator] = {"DECL_001": validate_party_declaration, "DECL_003": validate_commodity_name, "DECL_004": validate_consumer_care, "DECL_007": validate_gm_food_declaration, "DECL_008": validate_veg_nonveg_dot, "STICKER_001": validate_sticker_declaration, "MRP_001": validate_mrp_presence, "QTY_001": validate_net_quantity, "QTY_002": validate_quantity_unit}
 def _legal_reference(rule: RuleDefinition) -> str:
     source = rule.source
     document = source.get("document", "Unknown legal source")
@@ -38,8 +39,7 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
         elif rule.rule_id == "DECL_008" and inspection.context.veg_nonveg_dot_applicable is True: selected.append(rule)
     return selected
 def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
-    if inspection.quality_status == "REJECTED":
-        return ComplianceResult(inspection_id=inspection.inspection_id, overall_status=OverallStatus.REVIEW_REQUIRED, results=[RuleResult(rule_id="APP_QUALITY", status=ComplianceStatus.REVIEW, reason="M1 rejected the image quality; compliance evaluation was stopped and manual review is required.", confidence=inspection.quality_score, legal_reference="M1 image-quality gate")], review_count=1)
+    if inspection.quality_status == "REJECTED": return ComplianceResult(inspection_id=inspection.inspection_id, overall_status=OverallStatus.REVIEW_REQUIRED, results=[RuleResult(rule_id="APP_QUALITY", status=ComplianceStatus.REVIEW, reason="M1 rejected the image quality; compliance evaluation was stopped and manual review is required.", confidence=inspection.quality_score, legal_reference="M1 image-quality gate")], review_count=1)
     registry = load_rule_registry(repo_root)
     chapter_ii = evaluate_chapter_ii(inspection.context)
     if chapter_ii.status == ApplicabilityStatus.NOT_APPLICABLE: return ComplianceResult(inspection_id=inspection.inspection_id, overall_status=OverallStatus.NOT_APPLICABLE)
