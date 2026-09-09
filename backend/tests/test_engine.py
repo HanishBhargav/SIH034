@@ -28,7 +28,7 @@ def test_engine_missing_commodity_name_is_non_compliant():
     assert result.fail_count >= 1
 
 
-def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
+def test_engine_valid_commodity_name_does_not_review_deferred_rules():
     result = evaluate(
         make_input(
             text_blocks=[{"id": "R05", "text": "MRP ₹120 (inclusive of all taxes)"}],
@@ -74,23 +74,19 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
             context_overrides={"commodity_measure_type": "mass"},
         )
     )
-    decl_003 = next(item for item in result.results if item.rule_id == "DECL_003")
-    decl_004 = next(item for item in result.results if item.rule_id == "DECL_004")
-    qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
-    qty_002 = next(item for item in result.results if item.rule_id == "QTY_002")
-    mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
-    mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
-    date_001 = next(item for item in result.results if item.rule_id == "DATE_001")
-    assert decl_003.status == ComplianceStatus.PASS
-    assert decl_004.status == ComplianceStatus.PASS
-    assert qty_001.status == ComplianceStatus.PASS
-    assert qty_002.status == ComplianceStatus.PASS
-    assert mrp_001.status == ComplianceStatus.PASS
-    assert mrp_002.status == ComplianceStatus.PASS
-    assert date_001.status == ComplianceStatus.PASS
+    expected_pass_rules = {"DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "QR_001"}
+    result_ids = {item.rule_id for item in result.results}
+    assert expected_pass_rules.issubset(result_ids)
+    assert all(
+        next(item for item in result.results if item.rule_id == rule_id).status == ComplianceStatus.PASS
+        for rule_id in expected_pass_rules
+    )
+    deferred_rules = {"MRP_003", "PDP_001", "FONT_001", "FONT_002", "READ_001", "READ_002", "READ_003", "PACK_001", "PACK_002", "DECL_009"}
+    assert result_ids.isdisjoint(deferred_rules)
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
-    assert result.pass_count >= 7
-    assert result.review_count >= 1
+    assert result.pass_count >= len(expected_pass_rules)
+    assert result.review_count == 1
+    assert any(item.rule_id == "USP_001" and item.status == ComplianceStatus.REVIEW for item in result.results)
 
 
 def test_engine_valid_mrp_presence_passes():
@@ -232,3 +228,83 @@ def test_rejected_m1_quality_stops_compliance_evaluation():
     assert result.results[0].rule_id == "APP_QUALITY"
     assert result.results[0].status == ComplianceStatus.REVIEW
     assert result.applicable_rule_count == 0
+
+
+def test_date_002_only_runs_when_best_before_is_applicable():
+    declarations = {
+        "best_before_use_by": Declaration(
+            value="12 months",
+            confidence=0.96,
+            source_regions=["R07"],
+        )
+    }
+
+    not_applicable = evaluate(
+        make_input(
+            declarations=declarations,
+            context_overrides={"best_before_use_by_applicable": False},
+        )
+    )
+    assert not any(item.rule_id == "DATE_002" for item in not_applicable.results)
+
+    applicable = evaluate(
+        make_input(
+            declarations=declarations,
+            context_overrides={"best_before_use_by_applicable": True},
+        )
+    )
+    date_002 = next(item for item in applicable.results if item.rule_id == "DATE_002")
+    assert date_002.status == ComplianceStatus.PASS
+
+
+def test_imported_and_ecommerce_rules_route_only_when_context_applies():
+    base = evaluate(make_input())
+    assert not any(item.rule_id in {"DECL_002", "ECOM_001", "ECOM_002"} for item in base.results)
+
+    imported = evaluate(make_input(context_overrides={"is_imported": True}))
+    assert any(item.rule_id == "DECL_002" for item in imported.results)
+    assert not any(item.rule_id in {"ECOM_001", "ECOM_002"} for item in imported.results)
+
+    ecommerce = evaluate(make_input(context_overrides={"is_ecommerce": True}))
+    assert any(item.rule_id == "ECOM_001" for item in ecommerce.results)
+    assert not any(item.rule_id == "ECOM_002" for item in ecommerce.results)
+
+    ecommerce_imported = evaluate(
+        make_input(context_overrides={"is_ecommerce": True, "is_imported": True})
+    )
+    assert any(item.rule_id == "ECOM_001" for item in ecommerce_imported.results)
+    assert any(item.rule_id == "ECOM_002" for item in ecommerce_imported.results)
+
+
+def test_special_conditional_rules_are_not_run_when_irrelevant():
+    result = evaluate(make_input())
+    conditional_rules = {"DECL_005", "DECL_007", "DECL_008", "STICKER_001", "USP_002"}
+    assert not any(item.rule_id in conditional_rules for item in result.results)
+
+
+def test_special_conditional_rules_route_when_context_applies():
+    result = evaluate(
+        make_input(
+            context_overrides={
+                "dimensions_applicable": True,
+                "is_genetically_modified_food": True,
+                "veg_nonveg_dot_applicable": True,
+                "has_sticker_or_label": True,
+                "unit_sale_price_applicable": True,
+            },
+            declarations={
+                "commodity_dimensions": {
+                    "length": 10,
+                    "width": 5,
+                    "height": 2,
+                    "unit": "cm",
+                },
+                "gm_declaration": Declaration(value="Contains genetically modified ingredients", confidence=0.96),
+                "veg_nonveg_declaration": Declaration(value="veg", confidence=0.96),
+                "sticker_declaration": Declaration(value="Original label intact", confidence=0.96),
+                "unit_sale_price": Declaration(value=120, unit="kg", confidence=0.96),
+            },
+        )
+    )
+    result_ids = {item.rule_id for item in result.results}
+    assert {"DECL_005", "DECL_007", "DECL_008", "STICKER_001", "USP_002"}.issubset(result_ids)
