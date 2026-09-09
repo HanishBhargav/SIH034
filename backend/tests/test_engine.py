@@ -74,7 +74,7 @@ def test_engine_valid_commodity_name_does_not_review_deferred_rules():
             context_overrides={"commodity_measure_type": "mass"},
         )
     )
-    expected_pass_rules = {"DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "QR_001"}
+    expected_pass_rules = {"DECL_001", "DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "QR_001"}
     result_ids = {item.rule_id for item in result.results}
     assert expected_pass_rules.issubset(result_ids)
     assert all(
@@ -291,19 +291,7 @@ def test_special_conditional_rules_route_when_context_applies():
                 "veg_nonveg_dot_applicable": True,
                 "has_sticker_or_label": True,
                 "unit_sale_price_applicable": True,
-            },
-            declarations={
-                "commodity_dimensions": {
-                    "length": 10,
-                    "width": 5,
-                    "height": 2,
-                    "unit": "cm",
-                },
-                "gm_declaration": Declaration(value="Contains genetically modified ingredients", confidence=0.96),
-                "veg_nonveg_declaration": Declaration(value="veg", confidence=0.96),
-                "sticker_declaration": Declaration(value="Original label intact", confidence=0.96),
-                "unit_sale_price": Declaration(value=120, unit="kg", confidence=0.96),
-            },
+            }
         )
     )
     result_ids = {item.rule_id for item in result.results}
