@@ -63,6 +63,7 @@ class M2Context(BaseModel):
     is_ecommerce: bool | None = None
     country_of_origin: str | None = None
     best_before_use_by_applicable: bool | None = None
+    is_genetically_modified_food: bool | None = None
 
 
 class M2Input(BaseModel):
