@@ -7,6 +7,7 @@ from .validators.commodity_name import validate_commodity_name
 from .validators.consumer_care import validate_consumer_care
 from .validators.date_declaration import validate_manufacture_month_year
 from .validators.ecommerce import validate_ecommerce_mandatory_declarations
+from .validators.ecommerce_origin_filter import validate_ecommerce_country_origin_filter
 from .validators.gm_food import validate_gm_food_declaration
 from .validators.mrp_format import validate_mrp_format
 from .validators.mrp_presence import validate_mrp_presence
@@ -49,6 +50,8 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
             selected.append(rule)
         elif rule.rule_id == "ECOM_001" and when == {"field": "is_ecommerce", "equals": True} and inspection.context.is_ecommerce is True:
             selected.append(rule)
+        elif rule.rule_id == "ECOM_002" and inspection.context.is_ecommerce is True and inspection.context.is_imported is True:
+            selected.append(rule)
         elif rule.rule_id == "DECL_007" and inspection.context.is_genetically_modified_food is True:
             selected.append(rule)
         elif rule.rule_id == "DECL_008" and inspection.context.veg_nonveg_dot_applicable is True:
@@ -79,7 +82,9 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
         elif rule.rule_id == "USP_001":
             result = validate_unit_sale_price(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
         elif rule.rule_id == "ECOM_001":
-            result = validate_ecommerce_mandatory_declarations(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_by_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
+            result = validate_ecommerce_mandatory_declarations(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
+        elif rule.rule_id == "ECOM_002":
+            result = validate_ecommerce_country_origin_filter(inspection.declarations.get(rule.data.get("field")))
         else:
             validator = _VALIDATORS.get(rule.rule_id)
             if validator is None:
