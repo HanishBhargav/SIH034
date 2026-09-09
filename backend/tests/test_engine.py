@@ -1,5 +1,5 @@
 from backend.rules.engine import evaluate
-from backend.rules.models import ComplianceStatus, Declaration, M2Context, M2Input, OverallStatus
+from backend.rules.models import ComplianceStatus, Declaration, M2Context, M2Input, MoneyDeclaration, OverallStatus
 
 
 def make_input(**kwargs):
@@ -31,6 +31,7 @@ def test_engine_missing_commodity_name_is_non_compliant():
 def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
     result = evaluate(
         make_input(
+            text_blocks=[{"id": "R05", "text": "MRP ₹120 (inclusive of all taxes)"}],
             declarations={
                 "manufacturer_or_packer_details": Declaration(
                     value="ABC Foods Pvt Ltd, Mumbai, Maharashtra",
@@ -47,8 +48,9 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
                     confidence=0.96,
                     source_regions=["R03"],
                 ),
-                "mrp": Declaration(
+                "mrp": MoneyDeclaration(
                     value=120,
+                    currency="INR",
                     confidence=0.96,
                     source_regions=["R05"],
                 ),
@@ -58,11 +60,13 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
     decl_003 = next(item for item in result.results if item.rule_id == "DECL_003")
     qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
     mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
+    mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
     assert decl_003.status == ComplianceStatus.PASS
     assert qty_001.status == ComplianceStatus.PASS
     assert mrp_001.status == ComplianceStatus.PASS
+    assert mrp_002.status == ComplianceStatus.PASS
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
-    assert result.pass_count >= 3
+    assert result.pass_count >= 4
     assert result.review_count >= 1
 
 
@@ -81,6 +85,25 @@ def test_engine_valid_mrp_presence_passes():
     mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
     assert mrp_001.status == ComplianceStatus.PASS
     assert mrp_001.legal_reference.endswith("Rule 6(1)(e)")
+
+
+def test_engine_valid_mrp_format_passes():
+    result = evaluate(
+        make_input(
+            text_blocks=[{"id": "R05", "text": "MRP ₹120 (inclusive of all taxes)"}],
+            declarations={
+                "mrp": MoneyDeclaration(
+                    value=120,
+                    currency="INR",
+                    confidence=0.96,
+                    source_regions=["R05"],
+                )
+            },
+        )
+    )
+    mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
+    assert mrp_002.status == ComplianceStatus.PASS
+    assert mrp_002.legal_reference.endswith("Rule 6(1)(e)")
 
 
 def test_engine_unknown_applicability_requires_review():
