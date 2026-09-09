@@ -3,6 +3,7 @@ from collections.abc import Callable
 from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
+from .validators.best_before import validate_best_before_use_by
 from .validators.commodity_name import validate_commodity_name
 from .validators.consumer_care import validate_consumer_care
 from .validators.date_declaration import validate_manufacture_month_year
@@ -30,19 +31,15 @@ def _legal_reference(rule: RuleDefinition) -> str:
     document = source.get("document", "Unknown legal source")
     rule_number = str(source.get("rule", "?"))
     sub_rule = source.get("sub_rule")
-
-    # Reconciled rule layers may contain a fully qualified rule field as well
-    # as the older sub_rule field. If the rule field already has parentheses,
-    # treat it as authoritative and do not append the sub-rule again.
     if sub_rule and "(" not in rule_number:
         rule_number = f"{rule_number}({sub_rule})"
-
     return f"{document}, Rule {rule_number}"
 
 
 def _review_result(rule: RuleDefinition, reason: str) -> RuleResult:
     return RuleResult(
         rule_id=rule.rule_id,
+        field=rule.data.get("field"),
         status=ComplianceStatus.REVIEW,
         reason=reason,
         legal_reference=_legal_reference(rule),
@@ -66,15 +63,11 @@ def _select_applicable_rules(
             selected.append(rule)
         elif rule.rule_id == "DECL_002" and when == {"field": "is_imported", "equals": True}:
             selected.append(rule)
-
     return selected
 
 
 def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
     """Run the currently implemented M2 rules for one inspection."""
-    # M1 quality REJECTED means the observation is not reliable enough for
-    # deterministic compliance evaluation. Stop before legal rule evaluation
-    # rather than turning a perception failure into a compliance verdict.
     if inspection.quality_status == "REJECTED":
         return ComplianceResult(
             inspection_id=inspection.inspection_id,
@@ -137,6 +130,11 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
                 inspection.declarations.get(rule.data.get("field")),
                 commodity_category=inspection.context.commodity_category,
             )
+        elif rule.rule_id == "DATE_002":
+            result = validate_best_before_use_by(
+                inspection.declarations.get(rule.data.get("field")),
+                applicable=inspection.context.best_before_use_by_applicable,
+            )
         else:
             validator = _VALIDATORS.get(rule.rule_id)
             if validator is None:
@@ -150,6 +148,7 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             declaration = inspection.declarations.get(rule.data.get("field"))
             result = validator(declaration)
 
+        result.field = rule.data.get("field")
         result.legal_reference = _legal_reference(rule)
         results.append(result)
 
