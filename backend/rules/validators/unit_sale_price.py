@@ -34,14 +34,16 @@ def _expected_unit(quantity: float, unit: str) -> str | None:
     return None
 
 
-def _quantity_in_base(quantity: float, unit: str) -> float:
-    unit = unit.strip().lower()
-    if unit == "kg":
-        return quantity * 1000
-    if unit == "l":
-        return quantity * 1000
-    if unit == "m":
-        return quantity * 100
+def _quantity_in_expected_unit(quantity: float, unit: str, expected_unit: str) -> float:
+    source = unit.strip().lower()
+    if expected_unit in {"g", "ml", "cm"}:
+        if source in {"kg", "l", "m"}:
+            return quantity * 1000
+        return quantity
+    if expected_unit in {"kg", "l", "m"}:
+        if source in {"g", "ml", "cm"}:
+            return quantity / 1000
+        return quantity
     return quantity
 
 
@@ -51,9 +53,7 @@ def validate_unit_sale_price(
     net_quantity: Declaration | None,
     mrp: Declaration | None,
 ) -> RuleResult:
-    evidence = []
-    if declaration is not None:
-        evidence = declaration.source_regions
+    evidence = declaration.source_regions if declaration is not None else []
     if net_quantity is None or net_quantity.value is None or not net_quantity.unit:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.REVIEW, reason="Net quantity is required to determine the prescribed unit sale price.", legal_reference=LEGAL_REFERENCE)
     if mrp is None or mrp.value is None:
@@ -71,16 +71,15 @@ def validate_unit_sale_price(
     expected_unit = _expected_unit(quantity, net_quantity.unit)
     if expected_unit is None:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.REVIEW, reason="The quantity unit is not supported for automatic unit sale price validation.", evidence_regions=evidence, legal_reference=LEGAL_REFERENCE)
+    quantity_in_expected_unit = _quantity_in_expected_unit(quantity, net_quantity.unit, expected_unit)
+    expected_value = mrp_value / quantity_in_expected_unit
 
-    base_quantity = _quantity_in_base(quantity, net_quantity.unit)
-    exempt = (net_quantity.unit.strip().lower() in {"g", "ml"} and quantity <= 10)
-    if exempt:
-        if declaration is None:
-            return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.PASS, reason="Unit sale price declaration is not required for a package of 10 g/ml or less.", legal_reference=LEGAL_REFERENCE)
+    exempt = net_quantity.unit.strip().lower() in {"g", "ml"} and quantity <= 10
+    if exempt and declaration is None:
+        return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.PASS, reason="Unit sale price declaration is not required for a package of 10 g/ml or less.", legal_reference=LEGAL_REFERENCE)
 
     if declaration is None or declaration.state == DeclarationState.MISSING:
-        expected = mrp_value / base_quantity
-        if round(expected, 2) == round(mrp_value, 2):
+        if round(expected_value, 2) == round(mrp_value, 2):
             return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.PASS, reason="Unit sale price declaration is not required because retail sale price equals unit sale price.", legal_reference=LEGAL_REFERENCE)
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.FAIL, reason="Required unit sale price declaration is missing.", legal_reference=LEGAL_REFERENCE)
     if declaration.state in {DeclarationState.UNCERTAIN, DeclarationState.CONFLICTING} or declaration.confidence < _REVIEW_THRESHOLD:
@@ -95,8 +94,6 @@ def validate_unit_sale_price(
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.FAIL, reason="Unit sale price is not numerically parseable.", confidence=declaration.confidence, evidence_regions=evidence, legal_reference=LEGAL_REFERENCE)
     if declared_value < 0 or _normalise_unit(declared_unit) != expected_unit:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.FAIL, reason=f"Unit sale price must be declared per {expected_unit} for the observed net quantity.", confidence=declaration.confidence, evidence_regions=evidence, legal_reference=LEGAL_REFERENCE)
-
-    expected_value = mrp_value / base_quantity
     if round(declared_value, 2) != round(expected_value, 2):
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.FAIL, reason=f"Declared unit sale price does not match the calculated value of {expected_value:.2f} per {expected_unit} after rounding to two decimal places.", confidence=declaration.confidence, evidence_regions=evidence, legal_reference=LEGAL_REFERENCE)
     return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.PASS, reason="Unit sale price is present, uses the prescribed unit, and matches the calculated value after rounding to two decimal places.", confidence=declaration.confidence, evidence_regions=evidence, legal_reference=LEGAL_REFERENCE)

@@ -33,9 +33,9 @@ def validate_ecommerce_mandatory_declarations(
         required.append("country_of_origin")
     elif is_imported is None:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.REVIEW, reason="Import status is required to determine the e-commerce declaration set.", confidence=declaration.confidence, evidence_regions=declaration.source_regions, legal_reference=LEGAL_REFERENCE)
-    if best_before_use_applicable is True:
+    if best_before_use_by_applicable is True:
         required.append("best_before_use_by")
-    elif best_before_use_applicable is None:
+    elif best_before_use_by_applicable is None:
         return RuleResult(rule_id=RULE_ID, status=ComplianceStatus.REVIEW, reason="Best-before/use-by applicability is unresolved for the e-commerce listing.", confidence=declaration.confidence, evidence_regions=declaration.source_regions, legal_reference=LEGAL_REFERENCE)
     if dimensions_applicable is True:
         required.append("dimensions")
