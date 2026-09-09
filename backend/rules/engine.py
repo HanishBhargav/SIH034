@@ -70,6 +70,25 @@ def _select_applicable_rules(
 
 def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
     """Run the currently implemented M2 rules for one inspection."""
+    # M1 quality REJECTED means the observation is not reliable enough for
+    # deterministic compliance evaluation. Stop before legal rule evaluation
+    # rather than turning a perception failure into a compliance verdict.
+    if inspection.quality_status == "REJECTED":
+        return ComplianceResult(
+            inspection_id=inspection.inspection_id,
+            overall_status=OverallStatus.REVIEW_REQUIRED,
+            results=[
+                RuleResult(
+                    rule_id="APP_QUALITY",
+                    status=ComplianceStatus.REVIEW,
+                    reason="M1 rejected the image quality; compliance evaluation was stopped and manual review is required.",
+                    confidence=inspection.quality_score,
+                    legal_reference="M1 image-quality gate",
+                )
+            ],
+            review_count=1,
+        )
+
     registry = load_rule_registry(repo_root)
     chapter_ii = evaluate_chapter_ii(inspection.context)
 
