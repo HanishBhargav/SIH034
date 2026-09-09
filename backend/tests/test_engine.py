@@ -1,5 +1,5 @@
 from backend.rules.engine import evaluate
-from backend.rules.models import ComplianceStatus, Declaration, DeclarationState, M2Context, M2Input, MoneyDeclaration, OverallStatus
+from backend.rules.models import ComplianceStatus, Declaration, DeclarationState, M2Context, M2Input, Measurement, MoneyDeclaration, OverallStatus
 
 
 def make_input(**kwargs):
@@ -32,6 +32,11 @@ def test_engine_valid_commodity_name_does_not_review_deferred_rules():
     result = evaluate(
         make_input(
             text_blocks=[{"id": "R05", "text": "MRP ₹120 (inclusive of all taxes)"}],
+            measurements=[
+                Measurement(type="principal_display_panel_area", value=100, unit="cm2", confidence=0.95, method="calibrated_cv", source_regions=["PDP"]),
+                Measurement(type="font_height", value=2.0, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R01"]),
+                Measurement(type="mrp_numeral_height", value=2.0, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R05"]),
+            ],
             declarations={
                 "manufacturer_or_packer_details": Declaration(
                     value="ABC Foods Pvt Ltd, Mumbai, Maharashtra",
@@ -74,14 +79,14 @@ def test_engine_valid_commodity_name_does_not_review_deferred_rules():
             context_overrides={"commodity_measure_type": "mass"},
         )
     )
-    expected_pass_rules = {"DECL_001", "DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "USP_001"}
+    expected_pass_rules = {"DECL_001", "DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "USP_001", "FONT_001", "MRP_003"}
     result_ids = {item.rule_id for item in result.results}
     assert expected_pass_rules.issubset(result_ids)
     assert all(
         next(item for item in result.results if item.rule_id == rule_id).status == ComplianceStatus.PASS
         for rule_id in expected_pass_rules
     )
-    deferred_rules = {"MRP_003", "PDP_001", "FONT_001", "FONT_002", "READ_001", "READ_002", "READ_003", "PACK_001", "PACK_002", "DECL_009"}
+    deferred_rules = {"PDP_001", "FONT_002", "READ_001", "READ_002", "READ_003", "PACK_001", "PACK_002", "DECL_009"}
     assert result_ids.isdisjoint(deferred_rules)
     assert result.overall_status == OverallStatus.COMPLIANT
     assert result.pass_count >= len(expected_pass_rules)
@@ -122,6 +127,51 @@ def test_engine_valid_mrp_format_passes():
     mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
     assert mrp_002.status == ComplianceStatus.PASS
     assert mrp_002.legal_reference.endswith("Rule 6(1)(e)")
+
+
+def test_physical_rule7_checks_pass_with_calibrated_m1_measurements():
+    measurements = [
+        Measurement(type="principal_display_panel_area", value=80, unit="cm2", confidence=0.95, method="calibrated_cv", source_regions=["PDP"]),
+        Measurement(type="font_height", value=1.5, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R04"]),
+        Measurement(type="mrp_numeral_height", value=1.5, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R05"]),
+    ]
+    result = evaluate(make_input(measurements=measurements))
+    assert next(item for item in result.results if item.rule_id == "FONT_001").status == ComplianceStatus.PASS
+    assert next(item for item in result.results if item.rule_id == "MRP_003").status == ComplianceStatus.PASS
+
+
+def test_physical_rule7_checks_fail_below_required_height():
+    measurements = [
+        Measurement(type="principal_display_panel_area", value=600, unit="cm2", confidence=0.95, method="calibrated_cv", source_regions=["PDP"]),
+        Measurement(type="font_height", value=2.0, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R04"]),
+        Measurement(type="mrp_numeral_height", value=3.0, unit="mm", confidence=0.95, method="calibrated_cv", source_regions=["R05"]),
+    ]
+    result = evaluate(make_input(measurements=measurements))
+    assert next(item for item in result.results if item.rule_id == "FONT_001").status == ComplianceStatus.FAIL
+    assert next(item for item in result.results if item.rule_id == "MRP_003").status == ComplianceStatus.FAIL
+    assert result.overall_status == OverallStatus.NON_COMPLIANT
+
+
+def test_physical_rule7_checks_review_when_m1_cannot_measure():
+    result = evaluate(make_input(measurements=[]))
+    font = next(item for item in result.results if item.rule_id == "FONT_001")
+    numeral = next(item for item in result.results if item.rule_id == "MRP_003")
+    assert font.status == ComplianceStatus.REVIEW
+    assert numeral.status == ComplianceStatus.REVIEW
+    assert "M1" in font.reason
+    assert "M1" in numeral.reason
+    assert result.overall_status == OverallStatus.REVIEW_REQUIRED
+
+
+def test_physical_rule7_checks_review_without_reliable_calibration():
+    measurements = [
+        Measurement(type="principal_display_panel_area", value=80, unit="cm2", confidence=0.95, method="pixel_geometry", source_regions=["PDP"]),
+        Measurement(type="font_height", value=1.5, unit="mm", confidence=0.95, method="pixel_geometry", source_regions=["R04"]),
+        Measurement(type="mrp_numeral_height", value=1.5, unit="mm", confidence=0.95, method="pixel_geometry", source_regions=["R05"]),
+    ]
+    result = evaluate(make_input(measurements=measurements))
+    assert next(item for item in result.results if item.rule_id == "FONT_001").status == ComplianceStatus.REVIEW
+    assert next(item for item in result.results if item.rule_id == "MRP_003").status == ComplianceStatus.REVIEW
 
 
 def test_engine_unknown_applicability_requires_review():
