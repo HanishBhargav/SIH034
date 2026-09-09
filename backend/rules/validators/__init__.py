@@ -1,0 +1,1 @@
+"""Individual legal-compliance validators."""
