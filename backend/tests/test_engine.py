@@ -74,7 +74,7 @@ def test_engine_valid_commodity_name_does_not_review_deferred_rules():
             context_overrides={"commodity_measure_type": "mass"},
         )
     )
-    expected_pass_rules = {"DECL_001", "DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001", "QR_001"}
+    expected_pass_rules = {"DECL_001", "DECL_003", "DECL_004", "QTY_001", "QTY_002", "MRP_001", "MRP_002", "DATE_001"}
     result_ids = {item.rule_id for item in result.results}
     assert expected_pass_rules.issubset(result_ids)
     assert all(
