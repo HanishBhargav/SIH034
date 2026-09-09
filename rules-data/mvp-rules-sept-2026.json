@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "rule_set": "PCR_MVP_SEPT_2026",
+  "inspection_date_baseline": "2026-09-09",
+  "rules": [
+    {"rule_id":"APP_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"3"},"field":null,"effective_from":"2018-01-01","effective_to":null,"validator":"applicability_validator","detection_method":["context"],"evidence_required":false},
+    {"rule_id":"DECL_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(a)"},"field":"manufacturer_or_packer_details","effective_from":"2018-01-01","effective_to":null,"validator":"party_declaration_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"DECL_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(aa)"},"field":"country_of_origin","effective_from":"2018-01-01","effective_to":null,"validator":"origin_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"DECL_003","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(b)"},"field":"commodity_name","effective_from":"2018-01-01","effective_to":null,"validator":"commodity_name_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"DECL_004","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"2"},"field":"consumer_care","effective_from":"2016-01-01","effective_to":null,"validator":"consumer_care_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"QTY_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(c)"},"field":"net_quantity","effective_from":"2011-04-01","effective_to":null,"validator":"quantity_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"QTY_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"12","sub_rule":"2"},"field":"net_quantity_unit","effective_from":"2011-04-01","effective_to":null,"validator":"quantity_unit_validator","detection_method":["ocr","parser","context"],"evidence_required":true},
+    {"rule_id":"DATE_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(d)"},"field":"manufacture_month_year","effective_from":"2022-10-01","effective_to":null,"validator":"date_declaration_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"MRP_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(e)"},"field":"mrp","effective_from":"2018-01-01","effective_to":null,"validator":"mrp_presence_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"MRP_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"1(e)"},"field":"mrp","effective_from":"2022-10-01","effective_to":null,"validator":"mrp_format_validator","detection_method":["ocr","parser"],"evidence_required":true},
+    {"rule_id":"MRP_003","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"7"},"field":"mrp_numeral_size","effective_from":"2018-01-01","effective_to":null,"validator":"numeral_height_validator","detection_method":["ocr","measurement","context"],"evidence_required":true},
+    {"rule_id":"PDP_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"8","sub_rule":"1"},"field":"principal_display_panel","effective_from":"2011-04-01","effective_to":null,"validator":"pdp_placement_validator","detection_method":["ocr","geometry"],"evidence_required":true},
+    {"rule_id":"FONT_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"7"},"field":"numeral_letter_height","effective_from":"2018-01-01","effective_to":null,"validator":"numeral_height_validator","detection_method":["measurement","context"],"evidence_required":true},
+    {"rule_id":"READ_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"9","sub_rule":"1(b)"},"field":"mrp_net_quantity_contrast","effective_from":"2011-04-01","effective_to":null,"validator":"contrast_validator","detection_method":["image_analysis"],"evidence_required":true},
+    {"rule_id":"ECOM_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"10"},"field":"ecommerce_mandatory_declarations","effective_from":"2011-04-01","effective_to":null,"validator":"ecommerce_declaration_validator","detection_method":["ecommerce_listing","parser"],"evidence_required":true},
+    {"rule_id":"ECOM_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6","sub_rule":"10A","amendment":"G.S.R. 128(E), 13 February 2026"},"field":"ecommerce_country_origin_filter","effective_from":"2026-07-01","effective_to":null,"validator":"ecommerce_origin_filter_validator","detection_method":["ecommerce_listing","parser"],"evidence_required":true}
+  ],
+  "statuses": {
+    "rule": ["PASS", "FAIL", "REVIEW"],
+    "overall": ["COMPLIANT", "NON_COMPLIANT", "REVIEW_REQUIRED", "NOT_APPLICABLE"],
+    "processing": ["CREATED", "PROCESSING", "COMPLETED", "FAILED"]
+  },
+  "notes": [
+    "This registry is the September 2026 MVP subset, not the complete PCR corpus.",
+    "Unknown applicability or unreliable physical measurement must not be converted into PASS.",
+    "G.S.R. 312(E) effective 2027-07-01 is deliberately excluded from current September 2026 applicability."
+  ]
+}
