@@ -24,6 +24,10 @@ from .validators.unit_sale_price import validate_unit_sale_price
 Validator = Callable[..., RuleResult]
 _VALIDATORS: dict[str, Validator] = {"DECL_001": validate_party_declaration, "DECL_003": validate_commodity_name, "DECL_004": validate_consumer_care, "DECL_005": validate_commodity_dimension, "DECL_007": validate_gm_food_declaration, "DECL_008": validate_veg_nonveg_dot, "STICKER_001": validate_sticker_declaration, "QR_001": validate_qr_presence, "MRP_001": validate_mrp_presence, "QTY_001": validate_net_quantity, "QTY_002": validate_quantity_unit}
 
+# MRP numeral/size checking is kept optional in the MVP because reliable physical
+# calibration and package-panel measurement are not yet guaranteed by M1.
+_OPTIONAL_MVP_RULES = {"MRP_003"}
+
 def _legal_reference(rule: RuleDefinition) -> str:
     source = rule.source
     document = source.get("document", "Unknown legal source")
@@ -42,6 +46,8 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
         return []
     selected: list[RuleDefinition] = []
     for rule in registry.values():
+        if rule.rule_id in _OPTIONAL_MVP_RULES:
+            continue
         applicability = rule.data.get("applicability") or {}
         when = applicability.get("when")
         if when == {"field": "chapter_ii_applicable", "equals": True}:
@@ -78,7 +84,7 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
         elif rule.rule_id == "DATE_001":
             result = validate_manufacture_month_year(inspection.declarations.get(rule.data.get("field")), commodity_category=inspection.context.commodity_category)
         elif rule.rule_id == "DATE_002":
-            result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_by_applicable)
+            result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_applicable)
         elif rule.rule_id == "USP_001":
             result = validate_unit_sale_price(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
         elif rule.rule_id == "ECOM_001":
