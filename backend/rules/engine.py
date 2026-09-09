@@ -7,6 +7,7 @@ from .validators.commodity_name import validate_commodity_name
 from .validators.origin import validate_origin_declaration
 from .validators.party_declaration import validate_party_declaration
 from .validators.quantity import validate_net_quantity
+from .validators.quantity_unit import validate_quantity_unit
 
 Validator = Callable[..., RuleResult]
 
@@ -14,6 +15,7 @@ _VALIDATORS: dict[str, Validator] = {
     "DECL_001": validate_party_declaration,
     "DECL_003": validate_commodity_name,
     "QTY_001": validate_net_quantity,
+    "QTY_002": validate_quantity_unit,
 }
 
 
@@ -87,6 +89,11 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             result = validate_origin_declaration(
                 inspection.declarations.get(rule.data.get("field")),
                 is_imported=inspection.context.is_imported,
+            )
+        elif rule.rule_id == "QTY_002":
+            result = validate_quantity_unit(
+                inspection.declarations.get("net_quantity"),
+                expected_measure_type=inspection.context.commodity_measure_type,
             )
         else:
             validator = _VALIDATORS.get(rule.rule_id)
