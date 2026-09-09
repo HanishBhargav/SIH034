@@ -80,7 +80,7 @@ def test_engine_valid_mrp_presence_passes():
     )
     mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
     assert mrp_001.status == ComplianceStatus.PASS
-    assert mrp_001.legal_reference.endswith("Rule 6(1(e))")
+    assert mrp_001.legal_reference.endswith("Rule 6(1)(e)")
 
 
 def test_engine_unknown_applicability_requires_review():
