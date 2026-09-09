@@ -4,168 +4,22 @@
   "inspection_date_baseline": "2026-09-09",
   "status": "RECONCILED_WORKING_DRAFT",
   "scope": "Applicability and routing layer for the September 2026 MVP. This file is intentionally separate from the existing MVP registry until the full Rules Map is frozen.",
-  "source_hierarchy": [
-    "Official Gazette amendment and commencement notification",
-    "Official DCA consolidated Legal Metrology (Packaged Commodities) Rules, 2011",
-    "Official DCA implementation guidance/advisories",
-    "Official DCA FAQ"
-  ],
-  "inputs": [
-    "is_prepackaged",
-    "package_type",
-    "package_quantity",
-    "package_quantity_unit",
-    "commodity_category",
-    "consumer_type",
-    "is_imported",
-    "is_medical_device",
-    "is_electronic_product",
-    "is_food",
-    "is_tobacco",
-    "is_pan_masala",
-    "is_fast_food",
-    "is_drug",
-    "is_export_package",
-    "is_promotional_group",
-    "is_second_schedule_commodity",
-    "is_edible_oil_or_fat",
-    "qr_evidence"
-  ],
-  "decision_order": [
-    "PREPACKAGED_SCOPE",
-    "RULE_26_EXEMPTION",
-    "PACKAGE_PATHWAY",
-    "RULE_3_APPLICABILITY",
-    "SPECIAL_LEGAL_PATHWAY",
-    "APPLICABLE_RULE_FAMILY"
-  ],
+  "source_hierarchy": ["Official Gazette amendment and commencement notification", "Official DCA consolidated Legal Metrology (Packaged Commodities) Rules, 2011", "Official DCA implementation guidance/advisories", "Official DCA FAQ"],
+  "inputs": ["is_prepackaged", "package_type", "package_quantity", "package_quantity_unit", "commodity_category", "consumer_type", "is_imported", "is_medical_device", "is_electronic_product", "is_food", "is_tobacco", "is_pan_masala", "is_fast_food", "is_drug", "is_export_package", "is_promotional_group", "is_second_schedule_commodity", "is_edible_oil_or_fat", "qr_evidence"],
+  "decision_order": ["PREPACKAGED_SCOPE", "RULE_26_EXEMPTION", "PACKAGE_PATHWAY", "RULE_3_APPLICABILITY", "SPECIAL_LEGAL_PATHWAY", "APPLICABLE_RULE_FAMILY"],
   "rules": [
-    {
-      "rule_id": "SCOPE_001",
-      "source": {"document": "Legal Metrology Act, 2009 / PCR 2011", "topic": "pre-packaged commodity"},
-      "decision": "The MVP applies to pre-packaged commodity inspection. If the item is not established as pre-packaged, do not silently treat it as a Chapter II retail package.",
-      "unknown_policy": "REVIEW",
-      "validator": "prepackaged_scope_validator",
-      "automation": "automatic_when_context_is_known"
-    },
-    {
-      "rule_id": "EXEMPT_001",
-      "source": {"document": "Legal Metrology (Packaged Commodities) Rules, 2011", "rule": "26(a)"},
-      "decision": "Apply the Rule 26(a) small-quantity exemption only where its conditions are satisfied.",
-      "conditions": {"package_quantity": {"operator": "<=", "values": [{"value": 10, "unit": "g"}, {"value": 10, "unit": "ml"}]}},
-      "exceptions": ["Tobacco/tobacco-product restriction applies.", "Pan masala exception is effective from 2026-02-01 under G.S.R. 881(E)."],
-      "unknown_policy": "REVIEW",
-      "effective_from": "2026-02-01",
-      "validator": "rule26_exemption_validator",
-      "automation": "automatic_when_category_and_quantity_are_known"
-    },
-    {
-      "rule_id": "EXEMPT_002",
-      "source": {"document": "Legal Metrology (Packaged Commodities) Rules, 2011", "rule": "26"},
-      "decision": "Other Rule 26 category exemptions must be represented as separate, commodity-specific branches rather than collapsed into EXEMPT_001.",
-      "unknown_policy": "REVIEW",
-      "validator": "rule26_exemption_validator",
-      "automation": "conditional"
-    },
-    {
-      "rule_id": "APP_001",
-      "source": {"document": "Legal Metrology (Packaged Commodities) Rules, 2011", "rule": "3"},
-      "decision": "Chapter II retail-package provisions apply subject to Rule 3 exclusions. Generic packages above 25 kg or 25 litre are excluded; cement, fertilizer and agricultural farm produce have the separate above-50-kg threshold; industrial/institutional packages are separately excluded.",
-      "logic": [
-        "If consumer_type is industrial or institutional -> Chapter II NOT_APPLICABLE.",
-        "Else if commodity_category is cement/fertilizer/agricultural_farm_produce and package_quantity > 50 kg -> Chapter II NOT_APPLICABLE.",
-        "Else if commodity is not in that special category and package_quantity > 25 kg -> Chapter II NOT_APPLICABLE.",
-        "Else if package_quantity is expressed in litre and package_quantity > 25 L -> Chapter II NOT_APPLICABLE.",
-        "Else -> Chapter II APPLICABLE, subject to other exemptions/pathways."
-      ],
-      "important_constraint": "Do not apply the generic >25 kg exclusion before the special >50 kg category threshold.",
-      "unknown_policy": "REVIEW",
-      "validator": "applicability_validator",
-      "automation": "automatic_when_required_context_is_known",
-      "manual_review_conditions": ["Missing/conflicting quantity.", "Unknown consumer type where industrial/institutional status could change applicability.", "Unknown commodity category for a package near a threshold."]
-    },
-    {
-      "rule_id": "APP_002",
-      "source": {"document": "Legal Metrology (Packaged Commodities) Rules, 2011", "rule": "2/3/24/25"},
-      "decision": "Package pathway must be established before selecting declaration rules: retail, wholesale, export, or unknown.",
-      "routes": {
-        "retail": "Chapter II",
-        "wholesale": "Chapter III / Rule 24",
-        "export": "Chapter IV / Rule 25",
-        "unknown": "REVIEW"
-      },
-      "validator": "package_pathway_validator",
-      "automation": "automatic_when_context_is_known"
-    },
-    {
-      "rule_id": "MED_001",
-      "source": {"document": "PCR Second? No — PCR Amendment Rules, 2025", "amendment": "G.S.R. 778(E), 23-10-2025"},
-      "decision": "For packages containing medical devices, use the Medical Devices Rules, 2017 pathway for declarations and the specified Rule 7 numeral/letter dimensions where the amendment applies.",
-      "condition": {"field": "is_medical_device", "equals": true},
-      "validator": "medical_device_applicability_validator",
-      "automation": "automatic_when_classification_is_known",
-      "manual_review_conditions": ["Medical-device classification is uncertain."]
-    },
-    {
-      "rule_id": "ECOM_004",
-      "source": {"document": "PCR Amendment Rules, 2023", "amendment": "G.S.R. 456(E), 23-06-2023", "rule": "6"},
-      "decision": "For applicable electronic products, permitted declaration information may be provided through a QR code, but the package must inform consumers to scan the QR code for the relevant information when it is not declared on the package itself.",
-      "condition": {"field": "is_electronic_product", "equals": true},
-      "required_evidence": ["qr_evidence", "qr_scan_instruction_or_equivalent_package_notice"],
-      "unknown_policy": "REVIEW",
-      "validator": "electronic_qr_declaration_validator",
-      "automation": "conditional",
-      "manual_review_conditions": ["QR code detected but its legal role cannot be established.", "Required package instruction cannot be reliably detected.", "QR-linked declaration cannot be verified by the MVP." ]
-    },
-    {
-      "rule_id": "ECOM_001",
-      "source": {"document": "Legal Metrology (Packaged Commodities) Rules, 2011", "rule": "6(10)"},
-      "decision": "E-commerce presentation requirements must be evaluated separately from physical package declarations.",
-      "validator": "ecommerce_declaration_validator",
-      "automation": "conditional"
-    },
-    {
-      "rule_id": "ECOM_002",
-      "source": {"document": "PCR Amendment Rules, 2026", "amendment": "G.S.R. 128(E), 13-02-2026", "rule": "6(10A)"},
-      "decision": "For the September 2026 baseline, use the G.S.R. 128(E) country-of-origin filter requirement for e-commerce entities selling imported products.",
-      "effective_from": "2026-07-01",
-      "effective_to": "2027-06-30",
-      "condition": {"all": [{"field": "is_ecommerce", "equals": true}, {"field": "is_imported", "equals": true}]},
-      "validator": "ecommerce_origin_filter_validator",
-      "automation": "conditional"
-    },
-    {
-      "rule_id": "ECOM_003",
-      "source": {"document": "PCR Second Amendment Rules, 2026", "amendment": "G.S.R. 312(E), 27-04-2026", "rule": "6(10A)"},
-      "decision": "Replacement Rule 6(10A) wording is future-dated and must not be used for a September 2026 inspection.",
-      "effective_from": "2027-07-01",
-      "status_for_sept_2026": "FUTURE_NOT_APPLICABLE"
-    },
-    {
-      "rule_id": "QTY_SPECIAL_001",
-      "source": {"document": "DCA SOP for Determination of Net Quantity of Edible Oils & Fats", "date": "29-12-2023", "current_source_status": "DCA-listed operational guidance; June 2026 update also identified"},
-      "decision": "Edible oils/fats require specialized quantity determination when the SOP applies. Do not award PASS using only generic quantity logic when the specialized calculation is unsupported.",
-      "condition": {"field": "is_edible_oil_or_fat", "equals": true},
-      "fallback": "REVIEW",
-      "validator": "edible_oil_quantity_validator",
-      "automation": "conditional"
-    },
-    {
-      "rule_id": "GSR_418_RULE4",
-      "source": {"document": "PCR Third Amendment Rules, 2026", "amendment": "G.S.R. 418(E), 29-05-2026", "rule": "4"},
-      "decision": "AEO Tier-2/Tier-3 bonded-warehouse declaration timing is legal context. All mandatory declarations must be present before applicable retail packages leave the warehouse.",
-      "effective_from": "2026-05-29",
-      "scope": "legal_context",
-      "validator": "declaration_timing_context_validator",
-      "automation": "manual_context"
-    }
+    {"rule_id":"SCOPE_001","source":{"document":"Legal Metrology Act, 2009 / PCR 2011","topic":"pre-packaged commodity"},"decision":"The MVP applies to pre-packaged commodity inspection. If the item is not established as pre-packaged, do not silently treat it as a Chapter II retail package.","unknown_policy":"REVIEW","validator":"prepackaged_scope_validator","automation":"automatic_when_context_is_known"},
+    {"rule_id":"EXEMPT_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"26(a)"},"decision":"Apply the Rule 26(a) small-quantity exemption only where its conditions are satisfied.","conditions":{"package_quantity":{"operator":"<=","values":[{"value":10,"unit":"g"},{"value":10,"unit":"ml"}]}},"exceptions":["Tobacco/tobacco-product restriction applies.","Pan masala exception is effective from 2026-02-01 under G.S.R. 881(E)."],"unknown_policy":"REVIEW","effective_from":"2026-02-01","validator":"rule26_exemption_validator","automation":"automatic_when_category_and_quantity_are_known"},
+    {"rule_id":"EXEMPT_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"26"},"decision":"Other Rule 26 category exemptions must be represented as separate, commodity-specific branches rather than collapsed into EXEMPT_001.","unknown_policy":"REVIEW","validator":"rule26_exemption_validator","automation":"conditional"},
+    {"rule_id":"APP_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"3"},"decision":"Chapter II retail-package provisions apply subject to Rule 3 exclusions. Generic packages above 25 kg or 25 litre are excluded; cement, fertilizer and agricultural farm produce have the separate above-50-kg threshold; industrial/institutional packages are separately excluded.","logic":["If consumer_type is industrial or institutional -> Chapter II NOT_APPLICABLE.","Else if commodity_category is cement/fertilizer/agricultural_farm_produce and package_quantity > 50 kg -> Chapter II NOT_APPLICABLE.","Else if commodity is not in that special category and package_quantity > 25 kg -> Chapter II NOT_APPLICABLE.","Else if package_quantity is expressed in litre and package_quantity > 25 L -> Chapter II NOT_APPLICABLE.","Else -> Chapter II APPLICABLE, subject to other exemptions/pathways."],"important_constraint":"Do not apply the generic >25 kg exclusion before the special >50 kg category threshold.","unknown_policy":"REVIEW","validator":"applicability_validator","automation":"automatic_when_required_context_is_known","manual_review_conditions":["Missing/conflicting quantity.","Unknown consumer type where industrial/institutional status could change applicability.","Unknown commodity category for a package near a threshold."]},
+    {"rule_id":"APP_002","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"2/3/24/25"},"decision":"Package pathway must be established before selecting declaration rules: retail, wholesale, export, or unknown.","routes":{"retail":"Chapter II","wholesale":"Chapter III / Rule 24","export":"Chapter IV / Rule 25","unknown":"REVIEW"},"validator":"package_pathway_validator","automation":"automatic_when_context_is_known"},
+    {"rule_id":"MED_001","source":{"document":"Legal Metrology (Packaged Commodities) Amendment Rules, 2025","amendment":"G.S.R. 778(E), 23-10-2025"},"decision":"For packages containing medical devices, use the Medical Devices Rules, 2017 pathway for declarations and the specified Rule 7 numeral/letter dimensions where the amendment applies.","condition":{"field":"is_medical_device","equals":true},"validator":"medical_device_applicability_validator","automation":"automatic_when_classification_is_known","manual_review_conditions":["Medical-device classification is uncertain."]},
+    {"rule_id":"ECOM_004","source":{"document":"PCR Amendment Rules, 2023","amendment":"G.S.R. 456(E), 23-06-2023","rule":"6"},"decision":"For applicable electronic products, permitted declaration information may be provided through a QR code, but the package must inform consumers to scan the QR code for the relevant information when it is not declared on the package itself.","condition":{"field":"is_electronic_product","equals":true},"required_evidence":["qr_evidence","qr_scan_instruction_or_equivalent_package_notice"],"unknown_policy":"REVIEW","validator":"electronic_qr_declaration_validator","automation":"conditional","manual_review_conditions":["QR code detected but its legal role cannot be established.","Required package instruction cannot be reliably detected.","QR-linked declaration cannot be verified by the MVP."]},
+    {"rule_id":"ECOM_001","source":{"document":"Legal Metrology (Packaged Commodities) Rules, 2011","rule":"6(10)"},"decision":"E-commerce presentation requirements must be evaluated separately from physical package declarations.","validator":"ecommerce_declaration_validator","automation":"conditional"},
+    {"rule_id":"ECOM_002","source":{"document":"PCR Amendment Rules, 2026","amendment":"G.S.R. 128(E), 13-02-2026","rule":"6(10A)"},"decision":"For the September 2026 baseline, use the G.S.R. 128(E) country-of-origin filter requirement for e-commerce entities selling imported products.","effective_from":"2026-07-01","effective_to":"2027-06-30","condition":{"all":[{"field":"is_ecommerce","equals":true},{"field":"is_imported","equals":true}]},"validator":"ecommerce_origin_filter_validator","automation":"conditional"},
+    {"rule_id":"ECOM_003","source":{"document":"PCR Second Amendment Rules, 2026","amendment":"G.S.R. 312(E), 27-04-2026","rule":"6(10A)"},"decision":"Replacement Rule 6(10A) wording is future-dated and must not be used for a September 2026 inspection.","effective_from":"2027-07-01","status_for_sept_2026":"FUTURE_NOT_APPLICABLE"},
+    {"rule_id":"QTY_SPECIAL_001","source":{"document":"DCA SOP for Determination of Net Quantity of Edible Oils & Fats","date":"29-12-2023","current_source_status":"DCA-listed operational guidance; June 2026 update also identified"},"decision":"Edible oils/fats require specialized quantity determination when the SOP applies. Do not award PASS using only generic quantity logic when the specialized calculation is unsupported.","condition":{"field":"is_edible_oil_or_fat","equals":true},"fallback":"REVIEW","validator":"edible_oil_quantity_validator","automation":"conditional"},
+    {"rule_id":"GSR_418_RULE4","source":{"document":"PCR Third Amendment Rules, 2026","amendment":"G.S.R. 418(E), 29-05-2026","rule":"4"},"decision":"AEO Tier-2/Tier-3 bonded-warehouse declaration timing is legal context. All mandatory declarations must be present before applicable retail packages leave the warehouse.","effective_from":"2026-05-29","scope":"legal_context","validator":"declaration_timing_context_validator","automation":"manual_context"}
   ],
-  "implementation_notes": [
-    "Rule 3 industrial/institutional status must not be inferred solely from package size.",
-    "Wholesale packages are a distinct Chapter III pathway; do not run retail-only Rule 6(11) unit-sale-price logic automatically on wholesale packages.",
-    "Export packages are a distinct Chapter IV pathway; packages intended for sale in India require the applicable Indian package treatment.",
-    "Medical-device status is an alternate legal pathway, not a blanket PCR exemption.",
-    "Unknown or conflicting applicability context must resolve to REVIEW, never to guessed PASS or FAIL.",
-    "This file is a reconciled applicability layer and must be merged with the main MVP registry only after the full Rules Map is frozen."
-  ]
+  "implementation_notes":["Rule 3 industrial/institutional status must not be inferred solely from package size.","Wholesale packages are a distinct Chapter III pathway; do not run retail-only Rule 6(11) unit-sale-price logic automatically on wholesale packages.","Export packages are a distinct Chapter IV pathway; packages intended for sale in India require the applicable Indian package treatment.","Medical-device status is an alternate legal pathway, not a blanket PCR exemption.","Unknown or conflicting applicability context must resolve to REVIEW, never to guessed PASS or FAIL.","This file is a reconciled applicability layer and must be merged with the main MVP registry only after the full Rules Map is frozen."]
 }
