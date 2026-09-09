@@ -30,8 +30,6 @@ class Declaration(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     source_regions: list[str] = Field(default_factory=list)
     state: DeclarationState | None = None
-    # Optional wire fields preserve M1 metadata when declarations arrive
-    # through the generic declarations mapping.
     unit: str | None = None
     currency: str | None = None
 
@@ -64,6 +62,7 @@ class M2Context(BaseModel):
     is_imported: bool | None = None
     is_ecommerce: bool | None = None
     country_of_origin: str | None = None
+    best_before_use_by_applicable: bool | None = None
 
 
 class M2Input(BaseModel):
@@ -79,8 +78,6 @@ class M2Input(BaseModel):
 
 class RuleResult(BaseModel):
     rule_id: str
-    # Kept optional during the validator migration so existing rule outputs
-    # remain wire-compatible while M3/M4 can consume the field when supplied.
     field: str | None = None
     status: ComplianceStatus
     reason: str
