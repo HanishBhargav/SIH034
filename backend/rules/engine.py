@@ -4,6 +4,7 @@ from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.commodity_name import validate_commodity_name
+from .validators.date_declaration import validate_manufacture_month_year
 from .validators.mrp_format import validate_mrp_format
 from .validators.mrp_presence import validate_mrp_presence
 from .validators.origin import validate_origin_declaration
@@ -109,6 +110,11 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             result = validate_mrp_format(
                 inspection.declarations.get(rule.data.get("field")),
                 text_blocks=inspection.text_blocks,
+            )
+        elif rule.rule_id == "DATE_001":
+            result = validate_manufacture_month_year(
+                inspection.declarations.get(rule.data.get("field")),
+                commodity_category=inspection.context.commodity_category,
             )
         else:
             validator = _VALIDATORS.get(rule.rule_id)
