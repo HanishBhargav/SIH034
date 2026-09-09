@@ -61,13 +61,15 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
     qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
     mrp_001 = next(item for item in result.results if item.rule_id == "MRP_001")
     mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
+    date_001 = next(item for item in result.results if item.rule_id == "DATE_001")
     assert decl_003.status == ComplianceStatus.PASS
     assert qty_001.status == ComplianceStatus.PASS
     assert mrp_001.status == ComplianceStatus.PASS
     assert mrp_002.status == ComplianceStatus.PASS
-    assert result.overall_status == OverallStatus.REVIEW_REQUIRED
+    assert date_001.status == ComplianceStatus.FAIL
+    assert result.overall_status == OverallStatus.NON_COMPLIANT
     assert result.pass_count >= 4
-    assert result.review_count >= 1
+    assert result.fail_count >= 1
 
 
 def test_engine_valid_mrp_presence_passes():
@@ -104,6 +106,22 @@ def test_engine_valid_mrp_format_passes():
     mrp_002 = next(item for item in result.results if item.rule_id == "MRP_002")
     assert mrp_002.status == ComplianceStatus.PASS
     assert mrp_002.legal_reference.endswith("Rule 6(1)(e)")
+
+
+def test_engine_valid_date_declaration_passes():
+    result = evaluate(
+        make_input(
+            declarations={
+                "manufacture_month_year": Declaration(
+                    value="09/2026",
+                    confidence=0.96,
+                    source_regions=["R07"],
+                )
+            }
+        )
+    )
+    date_001 = next(item for item in result.results if item.rule_id == "DATE_001")
+    assert date_001.status == ComplianceStatus.PASS
 
 
 def test_engine_unknown_applicability_requires_review():
