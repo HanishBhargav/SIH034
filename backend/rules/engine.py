@@ -5,10 +5,12 @@ from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.commodity_name import validate_commodity_name
+from .validators.party_declaration import validate_party_declaration
 
 Validator = Callable[[Any], RuleResult]
 
 _VALIDATORS: dict[str, Validator] = {
+    "DECL_001": validate_party_declaration,
     "DECL_003": validate_commodity_name,
 }
 
@@ -89,8 +91,6 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
 
         declaration = inspection.declarations.get(rule.data.get("field"))
         result = validator(declaration)
-        # Keep the legal reference authoritative from the registry rather than
-        # trusting a validator's hard-coded reference.
         result.legal_reference = _legal_reference(rule)
         results.append(result)
 
