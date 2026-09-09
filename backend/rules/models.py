@@ -50,7 +50,11 @@ class M2Context(BaseModel):
     package_quantity_unit: str | None = None
     package_type: str | None = None
     consumer_type: str | None = None
+    is_prepackaged: bool | None = None
     is_imported: bool | None = None
+    is_medical_device: bool | None = None
+    is_electronic_product: bool | None = None
+    is_edible_oil_or_fat: bool | None = None
     is_ecommerce: bool | None = None
     country_of_origin: str | None = None
     best_before_use_by_applicable: bool | None = None
