@@ -83,10 +83,10 @@ def test_engine_valid_commodity_name_does_not_review_deferred_rules():
     )
     deferred_rules = {"MRP_003", "PDP_001", "FONT_001", "FONT_002", "READ_001", "READ_002", "READ_003", "PACK_001", "PACK_002", "DECL_009"}
     assert result_ids.isdisjoint(deferred_rules)
-    assert result.overall_status == OverallStatus.REVIEW_REQUIRED
+    assert result.overall_status == OverallStatus.COMPLIANT
     assert result.pass_count >= len(expected_pass_rules)
-    assert result.review_count == 1
-    assert any(item.rule_id == "USP_001" and item.status == ComplianceStatus.REVIEW for item in result.results)
+    assert result.review_count == 0
+    assert not any(item.rule_id == "USP_001" for item in result.results)
 
 
 def test_engine_valid_mrp_presence_passes():
