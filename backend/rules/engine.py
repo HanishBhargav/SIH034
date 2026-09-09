@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from typing import Any
 
 from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
@@ -7,12 +6,14 @@ from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.commodity_name import validate_commodity_name
 from .validators.origin import validate_origin_declaration
 from .validators.party_declaration import validate_party_declaration
+from .validators.quantity import validate_net_quantity
 
 Validator = Callable[..., RuleResult]
 
 _VALIDATORS: dict[str, Validator] = {
     "DECL_001": validate_party_declaration,
     "DECL_003": validate_commodity_name,
+    "QTY_001": validate_net_quantity,
 }
 
 
