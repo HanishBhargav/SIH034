@@ -37,9 +37,20 @@ _VALIDATORS: dict[str, Validator] = {
     "QTY_002": validate_quantity_unit,
 }
 
-# MRP numeral/size checking is kept optional in the MVP because reliable physical
-# calibration and package-panel measurement are not yet guaranteed by M1.
-_OPTIONAL_MVP_RULES = {"MRP_003"}
+# Rules retained in the legal registry but intentionally deferred from
+# automatic MVP evaluation until the required measurement/geometry/context
+# capabilities are reliable.
+_DEFERRED_MVP_RULES = {
+    "MRP_003",
+    "PDP_001",
+    "FONT_001",
+    "FONT_002",
+    "READ_001",
+    "READ_002",
+    "READ_003",
+    "PACK_001",
+    "PACK_002",
+}
 
 
 def _legal_reference(rule: RuleDefinition) -> str:
@@ -66,28 +77,38 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
     decision = evaluate_chapter_ii(inspection.context)
     if decision.status != ApplicabilityStatus.APPLICABLE:
         return []
+
     selected: list[RuleDefinition] = []
     for rule in registry.values():
-        if rule.rule_id in _OPTIONAL_MVP_RULES:
+        if rule.rule_id in _DEFERRED_MVP_RULES:
             continue
+
         applicability = rule.data.get("applicability") or {}
         when = applicability.get("when")
+
         if when == {"field": "chapter_ii_applicable", "equals": True}:
             selected.append(rule)
         elif rule.rule_id == "DECL_002" and when == {"field": "is_imported", "equals": True}:
-            selected.append(rule)
-        elif rule.rule_id == "ECOM_001" and when == {"field": "is_ecommerce", "equals": True} and inspection.context.is_ecommerce is True:
-            selected.append(rule)
+            if inspection.context.is_imported is True:
+                selected.append(rule)
+        elif rule.rule_id == "DATE_002" and when == {"field": "best_before_use_by_applicable", "equals": True}:
+            if inspection.context.best_before_use_by_applicable is True:
+                selected.append(rule)
+        elif rule.rule_id == "ECOM_001" and when == {"field": "is_ecommerce", "equals": True}:
+            if inspection.context.is_ecommerce is True:
+                selected.append(rule)
         elif rule.rule_id == "ECOM_002" and inspection.context.is_ecommerce is True and inspection.context.is_imported is True:
             selected.append(rule)
         elif rule.rule_id == "DECL_007" and inspection.context.is_genetically_modified_food is True:
             selected.append(rule)
         elif rule.rule_id == "DECL_008" and inspection.context.veg_nonveg_dot_applicable is True:
             selected.append(rule)
-        elif rule.rule_id == "USP_002" and when == {"field": "unit_sale_price_applicable", "equals": True}:
-            # USP_001 determines the actual presence/exemption requirement;
-            # USP_002 validates format whenever the unit-sale-price rule is in scope.
+        elif rule.rule_id == "STICKER_001" and inspection.context.has_sticker_or_label is True:
             selected.append(rule)
+        elif rule.rule_id == "USP_002" and when == {"field": "unit_sale_price_applicable", "equals": True}:
+            if inspection.context.unit_sale_price_applicable is True:
+                selected.append(rule)
+
     return selected
 
 
@@ -105,6 +126,7 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             )],
             review_count=1,
         )
+
     registry = load_rule_registry(repo_root)
     chapter_ii = evaluate_chapter_ii(inspection.context)
     if chapter_ii.status == ApplicabilityStatus.NOT_APPLICABLE:
@@ -121,6 +143,7 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             )],
             review_count=1,
         )
+
     results: list[RuleResult] = []
     for rule in _select_applicable_rules(inspection, registry):
         if rule.rule_id == "DECL_002":
@@ -132,13 +155,13 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
         elif rule.rule_id == "DATE_001":
             result = validate_manufacture_month_year(inspection.declarations.get(rule.data.get("field")), commodity_category=inspection.context.commodity_category)
         elif rule.rule_id == "DATE_002":
-            result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_applicable)
+            result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_by_applicable)
         elif rule.rule_id == "USP_001":
             result = validate_unit_sale_price(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
         elif rule.rule_id == "USP_002":
             result = validate_unit_sale_price_format(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"))
         elif rule.rule_id == "ECOM_001":
-            result = validate_ecommerce_mandatory_declarations(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
+            result = validate_ecommerce_mandatory_declarations(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_by_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
         elif rule.rule_id == "ECOM_002":
             result = validate_ecommerce_country_origin_filter(inspection.declarations.get(rule.data.get("field")))
         else:
@@ -147,9 +170,11 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
                 results.append(_review_result(rule, "Rule is applicable, but its validator has not yet been implemented in the current MVP engine."))
                 continue
             result = validator(inspection.declarations.get(rule.data.get("field")))
+
         result.field = rule.data.get("field")
         result.legal_reference = _legal_reference(rule)
         results.append(result)
+
     pass_count = sum(result.status == ComplianceStatus.PASS for result in results)
     fail_count = sum(result.status == ComplianceStatus.FAIL for result in results)
     review_count = sum(result.status == ComplianceStatus.REVIEW for result in results)
@@ -159,6 +184,7 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
         overall_status = OverallStatus.REVIEW_REQUIRED
     else:
         overall_status = OverallStatus.COMPLIANT
+
     return ComplianceResult(
         inspection_id=inspection.inspection_id,
         overall_status=overall_status,
