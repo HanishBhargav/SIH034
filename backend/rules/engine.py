@@ -4,6 +4,7 @@ from .applicability import ApplicabilityStatus, evaluate_chapter_ii
 from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.commodity_name import validate_commodity_name
+from .validators.mrp_format import validate_mrp_format
 from .validators.mrp_presence import validate_mrp_presence
 from .validators.origin import validate_origin_declaration
 from .validators.party_declaration import validate_party_declaration
@@ -103,6 +104,11 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             result = validate_quantity_unit(
                 inspection.declarations.get("net_quantity"),
                 expected_measure_type=inspection.context.commodity_measure_type,
+            )
+        elif rule.rule_id == "MRP_002":
+            result = validate_mrp_format(
+                inspection.declarations.get(rule.data.get("field")),
+                text_blocks=inspection.text_blocks,
             )
         else:
             validator = _VALIDATORS.get(rule.rule_id)
