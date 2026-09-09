@@ -32,18 +32,30 @@ def test_engine_valid_commodity_name_still_reviews_unimplemented_rules():
     result = evaluate(
         make_input(
             declarations={
+                "manufacturer_or_packer_details": Declaration(
+                    value="ABC Foods Pvt Ltd, Mumbai, Maharashtra",
+                    confidence=0.96,
+                    source_regions=["R02"],
+                ),
                 "commodity_name": Declaration(
                     value="Potato Chips",
                     confidence=0.96,
                     source_regions=["R01"],
-                )
+                ),
+                "net_quantity": Declaration(
+                    value=1,
+                    confidence=0.96,
+                    source_regions=["R03"],
+                ),
             }
         )
     )
     decl_003 = next(item for item in result.results if item.rule_id == "DECL_003")
+    qty_001 = next(item for item in result.results if item.rule_id == "QTY_001")
     assert decl_003.status == ComplianceStatus.PASS
+    assert qty_001.status == ComplianceStatus.PASS
     assert result.overall_status == OverallStatus.REVIEW_REQUIRED
-    assert result.pass_count >= 1
+    assert result.pass_count >= 2
     assert result.review_count >= 1
 
 
