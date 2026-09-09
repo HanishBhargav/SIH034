@@ -7,8 +7,6 @@ RULE_ID = "DATE_001"
 LEGAL_REFERENCE = "Legal Metrology (Packaged Commodities) Rules, 2011, Rule 6(1)(d)"
 MIN_CONFIDENCE = 0.70
 
-# Month names/numbers are intentionally accepted in common OCR forms because
-# Rule 6 permits the month and year to be expressed in words or numerals.
 _MONTH_PATTERN = re.compile(
     r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
     r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept|oct(?:ober)?|nov(?:ember)?|"
@@ -20,7 +18,6 @@ _YEAR_MONTH_PATTERN = re.compile(
     r"(?:19|20)\d{2}\s*[-/. ]\s*(?:0?[1-9]|1[0-2])",
     re.IGNORECASE,
 )
-_YEAR_PATTERN = re.compile(r"(?:19|20)\d{2}")
 
 
 def _meaningful(value: Any) -> bool:
@@ -33,9 +30,10 @@ def _meaningful(value: Any) -> bool:
 
 def _looks_like_month_year(value: Any) -> bool:
     text = str(value).strip()
-    if _MONTH_PATTERN.search(text) or _YEAR_MONTH_PATTERN.search(text):
+    # Full-match the representation so malformed values such as 2026-19
+    # cannot pass by matching only a valid prefix such as 2026-1.
+    if _MONTH_PATTERN.fullmatch(text) or _YEAR_MONTH_PATTERN.fullmatch(text):
         return True
-    # Numeric forms such as 09/2026 or 092026 are common OCR outputs.
     if re.fullmatch(r"(?:0?[1-9]|1[0-2])[/.-](?:19|20)\d{2}", text):
         return True
     if re.fullmatch(r"(?:0?[1-9]|1[0-2])(?:19|20)\d{2}", text):
@@ -57,14 +55,7 @@ def validate_manufacture_month_year(
     *,
     commodity_category: str | None = None,
 ) -> RuleResult:
-    """Validate presence and basic parseability of the manufacture month/year.
-
-    The current MVP does not adjudicate declarations governed by another law.
-    For food, seeds and cosmetics it therefore returns REVIEW rather than
-    incorrectly applying the Packaged Commodities Rules. Bidi/incense and the
-    specified LPG pathway are treated as explicit date exceptions when the
-    context identifies them.
-    """
+    """Validate presence and basic parseability of the manufacture month/year."""
     evidence = list(declaration.source_regions) if declaration else []
     confidence = declaration.confidence if declaration else None
     pathway = _special_pathway(commodity_category)
