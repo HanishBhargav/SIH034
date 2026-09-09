@@ -39,7 +39,7 @@ _VALIDATORS: dict[str, Validator] = {
 
 # Rules retained in the legal registry but intentionally deferred from
 # automatic MVP evaluation until the required measurement/geometry/context
-# capabilities are reliable.
+# capabilities are reliable or a dedicated validator exists.
 _DEFERRED_MVP_RULES = {
     "MRP_003",
     "PDP_001",
@@ -50,6 +50,7 @@ _DEFERRED_MVP_RULES = {
     "READ_003",
     "PACK_001",
     "PACK_002",
+    "DECL_009",
 }
 
 
@@ -79,6 +80,8 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
         return []
 
     selected: list[RuleDefinition] = []
+    context = inspection.context
+
     for rule in registry.values():
         if rule.rule_id in _DEFERRED_MVP_RULES:
             continue
@@ -86,28 +89,47 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
         applicability = rule.data.get("applicability") or {}
         when = applicability.get("when")
 
+        # Conditional rules are checked before the generic Chapter II rule
+        # because layered registry data may retain both conditions.
+        if rule.rule_id == "DECL_002":
+            if when == {"field": "is_imported", "equals": True} and context.is_imported is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "DATE_002":
+            if when == {"field": "best_before_use_by_applicable", "equals": True} and context.best_before_use_by_applicable is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "DECL_005":
+            if context.dimensions_applicable is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "ECOM_001":
+            if context.is_ecommerce is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "ECOM_002":
+            if context.is_ecommerce is True and context.is_imported is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "DECL_007":
+            if context.is_genetically_modified_food is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "DECL_008":
+            if context.veg_nonveg_dot_applicable is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "STICKER_001":
+            if context.has_sticker_or_label is True:
+                selected.append(rule)
+            continue
+        if rule.rule_id == "USP_002":
+            if context.unit_sale_price_applicable is True:
+                selected.append(rule)
+            continue
+
         if when == {"field": "chapter_ii_applicable", "equals": True}:
             selected.append(rule)
-        elif rule.rule_id == "DECL_002" and when == {"field": "is_imported", "equals": True}:
-            if inspection.context.is_imported is True:
-                selected.append(rule)
-        elif rule.rule_id == "DATE_002" and when == {"field": "best_before_use_by_applicable", "equals": True}:
-            if inspection.context.best_before_use_by_applicable is True:
-                selected.append(rule)
-        elif rule.rule_id == "ECOM_001" and when == {"field": "is_ecommerce", "equals": True}:
-            if inspection.context.is_ecommerce is True:
-                selected.append(rule)
-        elif rule.rule_id == "ECOM_002" and inspection.context.is_ecommerce is True and inspection.context.is_imported is True:
-            selected.append(rule)
-        elif rule.rule_id == "DECL_007" and inspection.context.is_genetically_modified_food is True:
-            selected.append(rule)
-        elif rule.rule_id == "DECL_008" and inspection.context.veg_nonveg_dot_applicable is True:
-            selected.append(rule)
-        elif rule.rule_id == "STICKER_001" and inspection.context.has_sticker_or_label is True:
-            selected.append(rule)
-        elif rule.rule_id == "USP_002" and when == {"field": "unit_sale_price_applicable", "equals": True}:
-            if inspection.context.unit_sale_price_applicable is True:
-                selected.append(rule)
 
     return selected
 
