@@ -51,6 +51,7 @@ class Measurement(BaseModel):
 class M2Context(BaseModel):
     inspection_date: date | None = None
     commodity_category: str | None = None
+    commodity_measure_type: str | None = None
     package_quantity: float | None = None
     package_quantity_unit: str | None = None
     package_type: str | None = None
