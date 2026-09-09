@@ -50,7 +50,6 @@ def _quantity_exceeds_chapter_ii_limit(context: M2Context) -> bool | None:
     if unit in {"l", "liter", "litre", "liters", "litres"}:
         return quantity > _GENERIC_LIMITS_L
 
-    # Other units cannot be compared reliably with the Rule 3 thresholds.
     return None
 
 
@@ -63,6 +62,16 @@ def evaluate_chapter_ii(context: M2Context) -> ApplicabilityDecision:
     package_type = _normalize(context.package_type)
     consumer_type = _normalize(context.consumer_type)
     category = _normalize(context.commodity_category)
+
+    # Explicit negative evidence must not be treated as a retail package.
+    # Missing evidence remains compatible with the legacy MVP contract and is
+    # handled conservatively below through package-pathway validation.
+    if context.is_prepackaged is False:
+        return ApplicabilityDecision(
+            status=ApplicabilityStatus.NOT_APPLICABLE,
+            reason="Item is explicitly identified as not pre-packaged; Chapter II packaged-commodity checks do not apply.",
+            pathway="NOT_PREPACKAGED",
+        )
 
     if package_type in {"export", "export_package"}:
         return ApplicabilityDecision(
@@ -92,7 +101,7 @@ def evaluate_chapter_ii(context: M2Context) -> ApplicabilityDecision:
             pathway="INDUSTRIAL_INSTITUTIONAL",
         )
 
-    if category == "medical_device":
+    if context.is_medical_device is True or category == "medical_device":
         return ApplicabilityDecision(
             status=ApplicabilityStatus.REVIEW,
             reason="Medical devices require routing against the Medical Devices Rules pathway; do not treat this as a blanket PCR exemption.",
