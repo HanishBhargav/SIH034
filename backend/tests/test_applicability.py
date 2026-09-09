@@ -10,6 +10,22 @@ def test_retail_package_is_applicable():
     assert result.pathway == "RETAIL"
 
 
+def test_explicitly_not_prepackaged_is_not_applicable():
+    result = evaluate_chapter_ii(
+        M2Context(is_prepackaged=False, package_type="retail")
+    )
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "NOT_PREPACKAGED"
+
+
+def test_explicitly_prepackaged_retail_package_is_applicable():
+    result = evaluate_chapter_ii(
+        M2Context(is_prepackaged=True, package_type="retail")
+    )
+    assert result.status == ApplicabilityStatus.APPLICABLE
+    assert result.pathway == "RETAIL"
+
+
 def test_generic_package_over_25kg_is_not_applicable():
     result = evaluate_chapter_ii(
         M2Context(package_type="retail", commodity_category="snacks", package_quantity=30, package_quantity_unit="kg")
@@ -51,7 +67,8 @@ def test_unknown_quantity_unit_requires_review():
 
 def test_medical_device_requires_specialist_routing():
     result = evaluate_chapter_ii(
-        M2Context(package_type="retail", commodity_category="medical_device")
+        M2Context(package_type="retail", is_medical_device=True)
     )
     assert result.status == ApplicabilityStatus.REVIEW
+    assert result.pathway == "MEDICAL_DEVICE"
     assert result.flags["specialist_routing_required"] is True
