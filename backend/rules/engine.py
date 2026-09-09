@@ -21,6 +21,7 @@ from .validators.veg_nonveg_dot import validate_veg_nonveg_dot
 from .validators.commodity_dimension import validate_commodity_dimension
 from .validators.unit_sale_price import validate_unit_sale_price
 from .validators.unit_sale_price_format import validate_unit_sale_price_format
+from .validators.text_height import validate_font_height, validate_mrp_numeral_height
 
 Validator = Callable[..., RuleResult]
 _VALIDATORS: dict[str, Validator] = {
@@ -35,15 +36,15 @@ _VALIDATORS: dict[str, Validator] = {
     "MRP_001": validate_mrp_presence,
     "QTY_001": validate_net_quantity,
     "QTY_002": validate_quantity_unit,
+    "FONT_001": validate_font_height,
+    "MRP_003": validate_mrp_numeral_height,
 }
 
 # Rules retained in the legal registry but intentionally deferred from
-# automatic MVP evaluation until the required measurement/geometry/context
-# capabilities are reliable or a dedicated validator exists.
+# automatic MVP evaluation until the required capabilities are reliable or a
+# dedicated validator exists.
 _DEFERRED_MVP_RULES = {
-    "MRP_003",
     "PDP_001",
-    "FONT_001",
     "FONT_002",
     "READ_001",
     "READ_002",
@@ -178,6 +179,10 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
             result = validate_manufacture_month_year(inspection.declarations.get(rule.data.get("field")), commodity_category=inspection.context.commodity_category)
         elif rule.rule_id == "DATE_002":
             result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_by_applicable)
+        elif rule.rule_id == "MRP_003":
+            result = validate_mrp_numeral_height(inspection.measurements)
+        elif rule.rule_id == "FONT_001":
+            result = validate_font_height(inspection.measurements)
         elif rule.rule_id == "USP_001":
             result = validate_unit_sale_price(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
         elif rule.rule_id == "USP_002":
