@@ -16,8 +16,9 @@ from .validators.quantity_unit import validate_quantity_unit
 from .validators.qr_presence import validate_qr_presence
 from .validators.sticker_declaration import validate_sticker_declaration
 from .validators.veg_nonveg_dot import validate_veg_nonveg_dot
+from .validators.commodity_dimension import validate_commodity_dimension
 Validator = Callable[..., RuleResult]
-_VALIDATORS: dict[str, Validator] = {"DECL_001": validate_party_declaration, "DECL_003": validate_commodity_name, "DECL_004": validate_consumer_care, "DECL_007": validate_gm_food_declaration, "DECL_008": validate_veg_nonveg_dot, "STICKER_001": validate_sticker_declaration, "QR_001": validate_qr_presence, "MRP_001": validate_mrp_presence, "QTY_001": validate_net_quantity, "QTY_002": validate_quantity_unit}
+_VALIDATORS: dict[str, Validator] = {"DECL_001": validate_party_declaration, "DECL_003": validate_commodity_name, "DECL_004": validate_consumer_care, "DECL_005": validate_commodity_dimension, "DECL_007": validate_gm_food_declaration, "DECL_008": validate_veg_nonveg_dot, "STICKER_001": validate_sticker_declaration, "QR_001": validate_qr_presence, "MRP_001": validate_mrp_presence, "QTY_001": validate_net_quantity, "QTY_002": validate_quantity_unit}
 def _legal_reference(rule: RuleDefinition) -> str:
     source = rule.source
     document = source.get("document", "Unknown legal source")
