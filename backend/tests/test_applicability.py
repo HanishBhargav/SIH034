@@ -34,11 +34,70 @@ def test_generic_package_over_25kg_is_not_applicable():
     assert result.pathway == "SIZE_EXCLUSION"
 
 
+def test_generic_package_at_25kg_remains_in_chapter_ii():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="snacks", package_quantity=25, package_quantity_unit="kg")
+    )
+    assert result.status == ApplicabilityStatus.APPLICABLE
+
+
+def test_generic_package_just_over_25kg_is_excluded():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="snacks", package_quantity=25.01, package_quantity_unit="kg")
+    )
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "SIZE_EXCLUSION"
+
+
 def test_special_category_40kg_remains_in_chapter_ii():
     result = evaluate_chapter_ii(
         M2Context(package_type="retail", commodity_category="agricultural_farm_produce", package_quantity=40, package_quantity_unit="kg")
     )
     assert result.status == ApplicabilityStatus.APPLICABLE
+
+
+def test_special_category_at_50kg_remains_in_chapter_ii():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="cement", package_quantity=50, package_quantity_unit="kg")
+    )
+    assert result.status == ApplicabilityStatus.APPLICABLE
+
+
+def test_special_category_over_50kg_is_not_applicable():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="fertilizer", package_quantity=50.01, package_quantity_unit="kg")
+    )
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "SIZE_EXCLUSION"
+
+
+def test_package_at_25l_remains_in_chapter_ii():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="oil", package_quantity=25, package_quantity_unit="L")
+    )
+    assert result.status == ApplicabilityStatus.APPLICABLE
+
+
+def test_package_over_25l_is_not_applicable():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", commodity_category="oil", package_quantity=25.01, package_quantity_unit="litre")
+    )
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "SIZE_EXCLUSION"
+
+
+def test_industrial_consumer_is_not_chapter_ii():
+    result = evaluate_chapter_ii(
+        M2Context(package_type="retail", consumer_type="industrial")
+    )
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "INDUSTRIAL_INSTITUTIONAL"
+
+
+def test_institutional_package_is_not_chapter_ii():
+    result = evaluate_chapter_ii(M2Context(package_type="institutional"))
+    assert result.status == ApplicabilityStatus.NOT_APPLICABLE
+    assert result.pathway == "INDUSTRIAL_INSTITUTIONAL"
 
 
 def test_wholesale_is_not_chapter_ii():
