@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from .applicability import ApplicabilityStatus, evaluate_chapter_ii
-from .models import ComplianceResult, ComplianceStatus, M2Input, OverallStatus, RuleResult
+from .models import ComplianceResult, ComplianceStatus, Declaration, DeclarationState, M2Input, OverallStatus, RuleResult
 from .rule_registry import RuleDefinition, load_rule_registry
 from .validators.best_before import validate_best_before_use_by
 from .validators.commodity_name import validate_commodity_name
@@ -40,9 +40,6 @@ _VALIDATORS: dict[str, Validator] = {
     "MRP_003": validate_mrp_numeral_height,
 }
 
-# Rules retained in the legal registry but intentionally deferred from
-# automatic MVP evaluation until the required capabilities are reliable or a
-# dedicated validator exists.
 _DEFERRED_MVP_RULES = {
     "PDP_001",
     "FONT_002",
@@ -75,6 +72,47 @@ def _review_result(rule: RuleDefinition, reason: str) -> RuleResult:
     )
 
 
+def _state_result(rule: RuleDefinition, declaration: Declaration) -> RuleResult | None:
+    """Honor M1's explicit declaration state before running a value validator.
+
+    State is stronger than the extracted value: a declaration marked MISSING,
+    UNCERTAIN, or CONFLICTING must not be converted into PASS merely because a
+    parser happened to populate ``value``.  This keeps M2 deterministic and
+    makes uncertainty visible to the caller.
+    """
+    state = declaration.state
+    if state is None or state == DeclarationState.FOUND:
+        return None
+
+    evidence = list(declaration.source_regions)
+    confidence = declaration.confidence
+    if state == DeclarationState.MISSING:
+        return RuleResult(
+            rule_id=rule.rule_id,
+            field=rule.data.get("field"),
+            status=ComplianceStatus.FAIL,
+            reason="Declaration was explicitly marked MISSING by the extraction layer.",
+            confidence=confidence,
+            evidence_regions=evidence,
+            legal_reference=_legal_reference(rule),
+        )
+
+    if state == DeclarationState.UNCERTAIN:
+        reason = "Declaration was explicitly marked UNCERTAIN by the extraction layer; manual review is required."
+    else:
+        reason = "Declaration was explicitly marked CONFLICTING by the extraction layer; manual review is required."
+
+    return RuleResult(
+        rule_id=rule.rule_id,
+        field=rule.data.get("field"),
+        status=ComplianceStatus.REVIEW,
+        reason=reason,
+        confidence=confidence,
+        evidence_regions=evidence,
+        legal_reference=_legal_reference(rule),
+    )
+
+
 def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefinition]) -> list[RuleDefinition]:
     decision = evaluate_chapter_ii(inspection.context)
     if decision.status != ApplicabilityStatus.APPLICABLE:
@@ -90,8 +128,6 @@ def _select_applicable_rules(inspection: M2Input, registry: dict[str, RuleDefini
         applicability = rule.data.get("applicability") or {}
         when = applicability.get("when")
 
-        # Conditional rules are checked before the generic Chapter II rule
-        # because layered registry data may retain both conditions.
         if rule.rule_id == "DECL_002":
             if when == {"field": "is_imported", "equals": True} and context.is_imported is True:
                 selected.append(rule)
@@ -169,34 +205,38 @@ def evaluate(inspection: M2Input, repo_root=None) -> ComplianceResult:
 
     results: list[RuleResult] = []
     for rule in _select_applicable_rules(inspection, registry):
-        if rule.rule_id == "DECL_002":
-            result = validate_origin_declaration(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported)
+        declaration = inspection.declarations.get(rule.data.get("field"))
+        state_result = _state_result(rule, declaration) if declaration is not None else None
+        if state_result is not None:
+            result = state_result
+        elif rule.rule_id == "DECL_002":
+            result = validate_origin_declaration(declaration, is_imported=inspection.context.is_imported)
         elif rule.rule_id == "QTY_002":
             result = validate_quantity_unit(inspection.declarations.get("net_quantity"), expected_measure_type=inspection.context.commodity_measure_type)
         elif rule.rule_id == "MRP_002":
-            result = validate_mrp_format(inspection.declarations.get(rule.data.get("field")), text_blocks=inspection.text_blocks)
+            result = validate_mrp_format(declaration, text_blocks=inspection.text_blocks)
         elif rule.rule_id == "DATE_001":
-            result = validate_manufacture_month_year(inspection.declarations.get(rule.data.get("field")), commodity_category=inspection.context.commodity_category)
+            result = validate_manufacture_month_year(declaration, commodity_category=inspection.context.commodity_category)
         elif rule.rule_id == "DATE_002":
-            result = validate_best_before_use_by(inspection.declarations.get(rule.data.get("field")), applicable=inspection.context.best_before_use_by_applicable)
+            result = validate_best_before_use_by(declaration, applicable=inspection.context.best_before_use_by_applicable)
         elif rule.rule_id == "MRP_003":
             result = validate_mrp_numeral_height(inspection.measurements)
         elif rule.rule_id == "FONT_001":
             result = validate_font_height(inspection.measurements)
         elif rule.rule_id == "USP_001":
-            result = validate_unit_sale_price(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
+            result = validate_unit_sale_price(declaration, net_quantity=inspection.declarations.get("net_quantity"), mrp=inspection.declarations.get("mrp"))
         elif rule.rule_id == "USP_002":
-            result = validate_unit_sale_price_format(inspection.declarations.get(rule.data.get("field")), net_quantity=inspection.declarations.get("net_quantity"))
+            result = validate_unit_sale_price_format(declaration, net_quantity=inspection.declarations.get("net_quantity"))
         elif rule.rule_id == "ECOM_001":
-            result = validate_ecommerce_mandatory_declarations(inspection.declarations.get(rule.data.get("field")), is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_by_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
+            result = validate_ecommerce_mandatory_declarations(declaration, is_imported=inspection.context.is_imported, best_before_use_by_applicable=inspection.context.best_before_use_by_applicable, dimensions_applicable=inspection.context.dimensions_applicable)
         elif rule.rule_id == "ECOM_002":
-            result = validate_ecommerce_country_origin_filter(inspection.declarations.get(rule.data.get("field")))
+            result = validate_ecommerce_country_origin_filter(declaration)
         else:
             validator = _VALIDATORS.get(rule.rule_id)
             if validator is None:
                 results.append(_review_result(rule, "Rule is applicable, but its validator has not yet been implemented in the current MVP engine."))
                 continue
-            result = validator(inspection.declarations.get(rule.data.get("field")))
+            result = validator(declaration)
 
         result.field = rule.data.get("field")
         result.legal_reference = _legal_reference(rule)
