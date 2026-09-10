@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Local prototype data
+storage/images/*
+storage/reports/*
+!storage/images/.gitkeep
+!storage/reports/.gitkeep
+
+# Database/local runtime
+*.db
+*.sqlite
+*.sqlite3
+
+# Build/cache
+build/
+dist/
+*.egg-info/
