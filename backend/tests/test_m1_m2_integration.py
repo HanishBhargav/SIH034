@@ -70,4 +70,6 @@ def test_m1_missing_physical_measurements_produce_rule_review():
     assert numeral.status == ComplianceStatus.REVIEW
     assert "M1" in font.reason
     assert "M1" in numeral.reason
-    assert result.overall_status == OverallStatus.REVIEW_REQUIRED
+    # Physical checks remain REVIEW, while missing mandatory declarations make
+    # the overall inspection NON_COMPLIANT.
+    assert result.overall_status == OverallStatus.NON_COMPLIANT
